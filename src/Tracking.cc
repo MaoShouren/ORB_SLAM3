@@ -53,7 +53,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         newParameterLoader(settings);
     }
     else{
-        cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+        cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ); //用 cv::FileStorage 以读取模式打开指定路径 (strSettingPath) 处的文件，允许您从该文件读取设置和数据。
 
         bool b_parse_cam = ParseCamParamFile(fSettings);
         if(!b_parse_cam)

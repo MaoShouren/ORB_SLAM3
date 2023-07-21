@@ -36,6 +36,7 @@
 
 using namespace std;
 
+// 获取IMU数据
 class ImuGrabber
 {
 public:
@@ -46,6 +47,7 @@ public:
     std::mutex mBufMutex;
 };
 
+//  获取双目图像数据
 class ImageGrabber
 {
 public:
@@ -66,7 +68,13 @@ public:
     cv::Mat M1l,M2l,M1r,M2r;
 
     const bool mbClahe;
+
+    // CLAHE是“对比度有限的自适应直方图均衡化”(Contrast Limited Adaptive Histogram Equalization)的缩写。
+    // CLAHE是传统直方图均衡化技术的扩展，旨在提高图像的对比度，同时防止过度放大噪声。
     cv::Ptr<cv::CLAHE> mClahe = cv::createCLAHE(3.0, cv::Size(8, 8));
+    // cv::Ptr：Ptr是OpenCV提供的智能指针类，用于处理其类的资源管理。它帮助自动管理对象的内存和生命周期。
+    // 3.0：这个参数设置了限制对比度的阈值，用于在局部区域内限制对比度增强。较高的限制值将导致更多的对比度增强，但可能也会引入噪声放大。
+    // cv::Size(8, 8)：这个参数设置了自适应直方图均衡化的块的大小。图像被分割成这个大小的小块，然后对每个块单独应用直方图均衡化。
 };
 
 
@@ -79,6 +87,8 @@ int main(int argc, char **argv)
   bool bEqual = false;
   if(argc < 4 || argc > 5)
   {
+    // command_demo: rosrun ORB_SLAM3 Stereo_Inertial Vocabulary/ORBvoc.txt Examples/Stereo-Inertial/EuRoC.yaml false
+    //                                    argv[1]              argv[2]                 argv[3]                  argv[4]
     cerr << endl << "Usage: rosrun ORB_SLAM3 Stereo_Inertial path_to_vocabulary path_to_settings do_rectify [do_equalize]" << endl;
     ros::shutdown();
     return 1;
@@ -100,7 +110,7 @@ int main(int argc, char **argv)
   
     if(igb.do_rectify)
     {      
-        // Load settings related to stereo calibration
+        // Load settings related to stereo calibration 加载图像的标定数据，进行标定
         cv::FileStorage fsSettings(argv[2], cv::FileStorage::READ);
         if(!fsSettings.isOpened())
         {
@@ -169,6 +179,7 @@ void ImageGrabber::GrabImageRight(const sensor_msgs::ImageConstPtr &img_msg)
   mBufMutexRight.unlock();
 }
 
+// 将opencv消息转换为ros消息类型
 cv::Mat ImageGrabber::GetImage(const sensor_msgs::ImageConstPtr &img_msg)
 {
   // Copy the ros image message to cv::Mat.
@@ -223,12 +234,14 @@ void ImageGrabber::SyncWithImu()
 
       if((tImLeft-tImRight)>maxTimeDiff || (tImRight-tImLeft)>maxTimeDiff)
       {
+        // 需要满足左右相机时间关系
         // std::cout << "big time difference" << std::endl;
         continue;
       }
-      if(tImLeft>mpImuGb->imuBuf.back()->header.stamp.toSec())
-          continue;
+      if(tImLeft>mpImuGb->imuBuf.back()->header.stamp.toSec()) 
+          continue; //需要满足图像时间>IMU的时间
 
+      //消息转换cv2ros
       this->mBufMutexLeft.lock();
       imLeft = GetImage(imgLeftBuf.front());
       imgLeftBuf.pop();
@@ -255,13 +268,14 @@ void ImageGrabber::SyncWithImu()
         }
       }
       mpImuGb->mBufMutex.unlock();
-      if(mbClahe)
+      
+      if(mbClahe) // 是否进行自适应直方图均衡化
       {
         mClahe->apply(imLeft,imLeft);
         mClahe->apply(imRight,imRight);
       }
 
-      if(do_rectify)
+      if(do_rectify) // 对图像进行校准
       {
         cv::remap(imLeft,imLeft,M1l,M2l,cv::INTER_LINEAR);
         cv::remap(imRight,imRight,M1r,M2r,cv::INTER_LINEAR);

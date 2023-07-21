@@ -191,14 +191,15 @@ namespace ORB_SLAM3 {
         if (cameraModel == "PinHole") {
             cameraType_ = PinHole;
 
-            //Read intrinsic parameters
+            //Read intrinsic parameters  读取内部参数
             float fx = readParameter<float>(fSettings,"Camera1.fx",found);
             float fy = readParameter<float>(fSettings,"Camera1.fy",found);
             float cx = readParameter<float>(fSettings,"Camera1.cx",found);
             float cy = readParameter<float>(fSettings,"Camera1.cy",found);
 
-            vCalibration = {fx, fy, cx, cy};
+            vCalibration = {fx, fy, cx, cy}; //相机模型参数
 
+            // 初始化相机模型
             calibration1_ = new Pinhole(vCalibration);
             originalCalib1_ = new Pinhole(vCalibration);
 

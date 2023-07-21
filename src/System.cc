@@ -38,10 +38,11 @@ namespace ORB_SLAM3
 
 Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
 
+// const string &strSettingFile 是 Vocabulary/ORBvoc.txt
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const int initFr, const string &strSequence):
+               const bool bUseViewer, const int initFr, const string &strSequence): // 构造函数
     mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false),
-    mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false)
+    mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false) // 类的成员变量初始化
 {
     // Output welcome message
     cout << endl <<
@@ -177,7 +178,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         //usleep(10*1000*1000);
     }
 
-
+    // 线程初始化
     if (mSensor==IMU_STEREO || mSensor==IMU_MONOCULAR || mSensor==IMU_RGBD)
         mpAtlas->SetInertialSensor();
 
@@ -188,6 +189,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Initialize the Tracking thread
     //(it will live in the main thread of execution, the one that called this constructor)
     cout << "Seq. Name: " << strSequence << endl;
+    // Tracker线程将执行在主线程中，即调用次构造函数的线程，具体体现方式在 this 这个参数上
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor, settings_, strSequence);
 
@@ -195,7 +197,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR,
                                      mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO || mSensor==IMU_RGBD, strSequence);
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run,mpLocalMapper);
-    mpLocalMapper->mInitFr = initFr;
+    mpLocalMapper->mInitFr = initFr; // 初始化帧数
     if(settings_)
         mpLocalMapper->mThFarPoints = settings_->thFarPoints();
     else
@@ -251,28 +253,32 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
 
     cv::Mat imLeftToFeed, imRightToFeed;
     if(settings_ && settings_->needToRectify()){
+        // M1l M2l  M1r M2r 分别是左右相机的重映射表
         cv::Mat M1l = settings_->M1l();
         cv::Mat M2l = settings_->M2l();
         cv::Mat M1r = settings_->M1r();
         cv::Mat M2r = settings_->M2r();
-
+        // cv::remap 是 OpenCV 中的一个函数，用于图像重映射。它的作用是将输入图像中的像素映射到输出图像中的新位置，从而实现图像的几何变换。
         cv::remap(imLeft, imLeftToFeed, M1l, M2l, cv::INTER_LINEAR);
         cv::remap(imRight, imRightToFeed, M1r, M2r, cv::INTER_LINEAR);
     }
     else if(settings_ && settings_->needToResize()){
+        // 进行尺度变化
         cv::resize(imLeft,imLeftToFeed,settings_->newImSize());
         cv::resize(imRight,imRightToFeed,settings_->newImSize());
     }
     else{
+        // 不变
         imLeftToFeed = imLeft.clone();
         imRightToFeed = imRight.clone();
     }
 
-    // Check mode change
+    // Check mode change  判断是否激活定位模式
     {
         unique_lock<mutex> lock(mMutexMode);
         if(mbActivateLocalizationMode)
         {
+            //激活定位模式只关注地图上的位置估计，不再执行建图过程，从而获得更精确的定位
             mpLocalMapper->RequestStop();
 
             // Wait until Local Mapping has effectively stopped

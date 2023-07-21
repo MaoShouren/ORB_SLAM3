@@ -27,7 +27,8 @@ Camera.height: 480
 Camera.fps: 30
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
-Camera.RGB: 1
+# Camera.RGB: 1
+Camera.RGB: 0
 
 Stereo.ThDepth: 40.0
 Stereo.b: 0.0745
@@ -36,14 +37,22 @@ Stereo.b: 0.0745
 RGBD.DepthMapFactor: 1000.0
 
 # Transformation from body-frame (imu) to left camera
+# IMU.T_b_c1: !!opencv-matrix
+#    rows: 4
+#    cols: 4
+#    dt: f
+#    data: [0.999903, -0.0138036, -0.00208099, -0.0202141,
+#          0.0137985, 0.999902, -0.00243498, 0.00505961,
+#          0.0021144, 0.00240603, 0.999995, 0.0114047,
+#          0.0, 0.0, 0.0, 1.0]
 IMU.T_b_c1: !!opencv-matrix
    rows: 4
    cols: 4
    dt: f
-   data: [0.999903, -0.0138036, -0.00208099, -0.0202141,
-         0.0137985, 0.999902, -0.00243498, 0.00505961,
-         0.0021144, 0.00240603, 0.999995, 0.0114047,
-         0.0, 0.0, 0.0, 1.0]
+   data: [0.0, -1.0, 0.0, 0.8,
+          0.0, 0.0, -1.0, 0.0,
+          1.0, 0.0, 0.0, 1.05,
+          0.0, 0.0, 0.0, 1.0]
 
 
 # Do not insert KFs when recently lost

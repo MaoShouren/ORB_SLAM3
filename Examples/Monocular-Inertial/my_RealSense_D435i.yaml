@@ -7,13 +7,13 @@ File.version: "1.0"
 
 Camera.type: "PinHole"
 
-# Left Camera calibration and distortion parameters (OpenCV)
+# Right Camera calibration and distortion parameters (OpenCV) 标定参数和畸变参数
 Camera1.fx: 382.613
 Camera1.fy: 382.613
 Camera1.cx: 320.183
 Camera1.cy: 236.455
 
-# distortion parameters
+# distortion parameters 畸变参数
 Camera1.k1: 0.0
 Camera1.k2: 0.0
 Camera1.p1: 0.0
@@ -28,6 +28,26 @@ Camera.fps: 30
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 0
+
+# Transformation from body-frame (imu) to left camera
+IMU.T_b_c1: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [0,0,1,0.675,
+         -1,0,0,0,
+         0,-1,0,0.4,
+         0.0, 0.0, 0.0, 1.0]
+
+# Do not insert KFs when recently lost
+IMU.InsertKFsWhenLost: 0
+
+# IMU noise (Use those from VINS-mono)
+IMU.NoiseGyro: 1e-3 # 2.44e-4 #1e-3 # rad/s^0.5
+IMU.NoiseAcc: 1e-2 # 1.47e-3 #1e-2 # m/s^1.5
+IMU.GyroWalk: 1e-6 # rad/s^1.5
+IMU.AccWalk: 1e-4 # m/s^2.5
+IMU.Frequency: 200.0
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
@@ -49,7 +69,7 @@ ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
 
 #--------------------------------------------------------------------------------------------
-# Viewer Parameters
+# Viewer Parameters ORB-SLAM3系统在运行时可视化的方式和外观
 #--------------------------------------------------------------------------------------------
 Viewer.KeyFrameSize: 0.05
 Viewer.KeyFrameLineWidth: 1.0

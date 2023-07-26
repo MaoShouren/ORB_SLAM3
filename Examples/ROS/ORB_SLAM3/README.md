@@ -45,6 +45,9 @@ https://blog.csdn.net/qq_41861406/article/details/124362545
 cd ~/code/ORB_SLAM3
 rosrun ORB_SLAM3 Mono_Inertial Vocabulary/ORBvoc.txt Examples/Monocular-Inertial/my_RealSense_D435i.yaml
 
+# TODO：解决bug：Empty IMU measurements vector!!!
+# 出现在IMU预积分
+
 # 纯单目
 rosrun ORB_SLAM3 Mono Vocabulary/ORBvoc.txt Examples/Monocular/RealSense_D435i.yaml
 ```

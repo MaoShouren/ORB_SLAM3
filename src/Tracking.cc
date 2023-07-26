@@ -16,6 +16,16 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+Tracking 类通过不断处理输入的图像帧，提取特征点、估计姿态等，实现了实时的视觉定位和跟踪，是构建整个 SLAM 系统的核心组件之一。
+具体来说，Tracking 类的主要功能包括：
+特征提取与匹配：Tracking 会对输入的图像帧进行特征点提取，并通过描述子匹配来寻找前后帧之间的对应关系。
+姿态估计：通过对特征点的匹配，Tracking 可以估计相机在连续帧之间的运动，也就是相机的姿态（位姿）估计。
+关键帧选择：在视觉SLAM中，不是每一帧都被选为关键帧。Tracking 类会根据一些准则（例如帧间距离、视角等）选择关键帧。
+重定位：当系统失去跟踪或无法估计当前相机姿态时，Tracking 可以尝试通过关键帧来进行重定位，从而恢复定位过程。
+地图点管理：Tracking 负责管理地图点（MapPoints），即特征点在3D空间中的位置，用于建立地图和优化。
+跟踪状态管理：Tracking 会维护一个跟踪状态机，用于确定当前系统是处于跟踪状态、重定位状态还是初始化状态。
+*/
 
 #include "Tracking.h"
 
@@ -41,7 +51,8 @@ namespace ORB_SLAM3
 {
 
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq):
+Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, 
+    const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq):
     mState(NO_IMAGES_YET), mSensor(sensor), mTrackedFr(0), mbStep(false),
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
     mbReadyToInitializate(false), mpSystem(pSys), mpViewer(NULL), bStepByStep(false),
@@ -85,7 +96,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             std::cerr << "**ERROR in the config file, the format is not correct**" << std::endl;
             try
             {
-                throw -1;
+                throw -1; // 运行到此处跳出try块，抛出了一个整数类型的异常，值为-1
             }
             catch(exception &e)
             {
@@ -100,6 +111,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
     vector<GeometricCamera*> vpCams = mpAtlas->GetAllCameras();
     std::cout << "There are " << vpCams.size() << " cameras in the atlas" << std::endl;
+    //
     for(GeometricCamera* pCam : vpCams)
     {
         std::cout << "Camera " << pCam->GetId();
@@ -1584,9 +1596,13 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
     if (mSensor == System::MONOCULAR)
     {
         if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET ||(lastID - initID) < mMaxFrames)
+        {
             mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mpCamera,mDistCoef,mbf,mThDepth);
+        }
         else
+        {
             mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mpCamera,mDistCoef,mbf,mThDepth);
+        }
     }
     else if(mSensor == System::IMU_MONOCULAR)
     {
@@ -1632,7 +1648,7 @@ void Tracking::PreintegrateIMU()
     }
 
     mvImuFromLastFrame.clear();
-    mvImuFromLastFrame.reserve(mlQueueImuData.size());
+    mvImuFromLastFrame.reserve(mlQueueImuData.size()); // reserve()方法是用于预分配vector的内存空间，以避免不必要的重新分配和复制操作，从而提高性能。
     if(mlQueueImuData.size() == 0)
     {
         Verbose::PrintMess("Not IMU data in mlQueueImuData!!", Verbose::VERBOSITY_NORMAL);
@@ -1648,12 +1664,14 @@ void Tracking::PreintegrateIMU()
             if(!mlQueueImuData.empty())
             {
                 IMU::Point* m = &mlQueueImuData.front();
+                // 默认情况下，std::cout的浮点数输出精度是6位。通过调用precision()函数，你可以指定更高或更低的位数。
+                // 在这里，std::cout.precision(17);将浮点数的输出精度设置为17位。
                 cout.precision(17);
-                if(m->t<mCurrentFrame.mpPrevFrame->mTimeStamp-mImuPer)
+                if(m->t < mCurrentFrame.mpPrevFrame->mTimeStamp - mImuPer)
                 {
                     mlQueueImuData.pop_front();
                 }
-                else if(m->t<mCurrentFrame.mTimeStamp-mImuPer)
+                else if(m->t < mCurrentFrame.mTimeStamp - mImuPer)
                 {
                     mvImuFromLastFrame.push_back(*m);
                     mlQueueImuData.pop_front();
@@ -1661,7 +1679,7 @@ void Tracking::PreintegrateIMU()
                 else
                 {
                     mvImuFromLastFrame.push_back(*m);
-                    break;
+                    break; // 跳出while循环
                 }
             }
             else

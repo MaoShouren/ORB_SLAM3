@@ -72,7 +72,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "Mono_Inertial");
   ros::NodeHandle n("~");
   ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
-  bool bEqual = false;
+  bool bEqual = false; // 是否进行自适应直方图均衡化
   if(argc < 3 || argc > 4)
   {
     cerr << endl << "Usage: rosrun ORB_SLAM3 Mono_Inertial path_to_vocabulary path_to_settings [do_equalize]" << endl;
@@ -146,8 +146,8 @@ void ImageGrabber::SyncWithImu()
     double tIm = 0;
     if (!img0Buf.empty()&&!mpImuGb->imuBuf.empty())
     {
-      tIm = img0Buf.front()->header.stamp.toSec();
-      if(tIm>mpImuGb->imuBuf.back()->header.stamp.toSec())
+      tIm = img0Buf.front()->header.stamp.toSec(); // 获取img0Buf queue中的最先进去元素的时间，并转化为秒
+      if(tIm>mpImuGb->imuBuf.back()->header.stamp.toSec()) 
           continue;
       {
       this->mBufMutex.lock();
@@ -162,8 +162,9 @@ void ImageGrabber::SyncWithImu()
       {
         // Load imu measurements from buffer
         vImuMeas.clear();
-        while(!mpImuGb->imuBuf.empty() && mpImuGb->imuBuf.front()->header.stamp.toSec()<=tIm)
+        while(!mpImuGb->imuBuf.empty() && mpImuGb->imuBuf.front()->header.stamp.toSec()<=tIm) // IMU queue中的front元素的时间戳 <= tIm
         {
+          // 从IMU队列中提取那些时间戳早于或等于图像队列中最早图像时间戳的IMU数据，并将其存储在vImuMeas向量中。在提取完后，从IMU队列中移除这些提取的数据。
           double t = mpImuGb->imuBuf.front()->header.stamp.toSec();
           cv::Point3f acc(mpImuGb->imuBuf.front()->linear_acceleration.x, mpImuGb->imuBuf.front()->linear_acceleration.y, mpImuGb->imuBuf.front()->linear_acceleration.z);
           cv::Point3f gyr(mpImuGb->imuBuf.front()->angular_velocity.x, mpImuGb->imuBuf.front()->angular_velocity.y, mpImuGb->imuBuf.front()->angular_velocity.z);
@@ -172,10 +173,10 @@ void ImageGrabber::SyncWithImu()
         }
       }
       mpImuGb->mBufMutex.unlock();
-      if(mbClahe)
+      if(mbClahe) // 是否进行自适应直方图均衡化(CLAHE)
         mClahe->apply(im,im);
 
-      mpSLAM->TrackMonocular(im,tIm,vImuMeas);
+      mpSLAM->TrackMonocular(im,tIm,vImuMeas); // System中的主函数，程序的主要部分
     }
 
     std::chrono::milliseconds tSleep(1);
@@ -185,6 +186,7 @@ void ImageGrabber::SyncWithImu()
 
 void ImuGrabber::GrabImu(const sensor_msgs::ImuConstPtr &imu_msg)
 {
+//   std::cout << "imu_msg is ===" << *imu_msg << std::endl; // 能拿到imu数据，并且是正确的
   mBufMutex.lock();
   imuBuf.push(imu_msg);
   mBufMutex.unlock();

@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+图像帧（Frame），也称为普通帧。它是 ORB-SLAM3 中的一个核心类，用于存储图像帧的信息，包括图像数据、相机姿态、特征点等信息。
+*/
+
 #include "Frame.h"
 
 #include "G2oTypes.h"

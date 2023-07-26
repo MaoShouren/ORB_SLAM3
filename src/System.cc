@@ -16,7 +16,21 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+    下列代码中： 变量前的 mb代表 member boolean , mp代表 member pointer ml 代表 member list
+*/
 
+/*
+System 类的主要功能包括：
+    系统初始化：System 在启动时会进行系统初始化，包括相机参数的读取、地图的初始化、ROS节点的初始化等。
+    跟踪与定位：System 调用 Tracking 类来处理连续的图像帧，实现相机的实时定位与跟踪。
+    地图构建：System 调用 Mapping 类来进行地图的构建，包括添加新的地图点、关键帧的插入等。
+    闭环检测：System 负责调用 Loop Closing 类来进行闭环检测，即检测当前帧与历史帧之间是否存在回环。
+    重定位：当跟踪失败或丢失时，System 调用 Relocalization 类进行重定位，找回丢失的相机定位。
+    参数调整与优化：System 会根据系统状态和性能调整参数，并进行优化以提高定位和建图的精度。
+
+    ROS接口：对于ROS用户，System 类提供了ROS接口，可以与ROS节点进行交互，例如获取相机位姿、地图点云等。
+*/
 
 #include "System.h"
 #include "Converter.h"
@@ -68,6 +82,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "RGB-D-Inertial" << endl;
 
     //Check settings file
+    // cv::FileStorage是用于读取和写入XML或YAML格式文件的类，用于存储和加载配置数据、图像参数、相机参数等。
+    // strSettingsFile.c_str()是 文件路径参数，cv::FileStorage::READ是读取模式。
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
     if(!fsSettings.isOpened())
     {
@@ -77,7 +93,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     cv::FileNode node = fsSettings["File.version"];
     if(!node.empty() && node.isString() && node.string() == "1.0"){
-        settings_ = new Settings(strSettingsFile,mSensor);
+        // 使用new在堆上分配内存创建一个Settings类，在堆上 分配内存的程序可以在程序的不同部分中进行访问，
+        // 而不局限于作用域内。
+        settings_ = new Settings(strSettingsFile,mSensor); // Settings* settings_;
 
         mStrLoadAtlasFromFile = settings_->atlasLoadFile();
         mStrSaveAtlasToFile = settings_->atlasSaveFile();
@@ -194,18 +212,20 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
                              mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor, settings_, strSequence);
 
     //Initialize the Local Mapping thread and launch
+    // 这块使用 this 的含义是要在该文件中使用mpLocalMapper中的方法。
     mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR,
                                      mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO || mSensor==IMU_RGBD, strSequence);
+    // 是创建名为 mptLocalMapping 的线程，并将mpLocalMapper类中的参数传递给Run函数
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run,mpLocalMapper);
     mpLocalMapper->mInitFr = initFr; // 初始化帧数
     if(settings_)
-        mpLocalMapper->mThFarPoints = settings_->thFarPoints();
+        mpLocalMapper->mThFarPoints = settings_->thFarPoints(); // thFarPoints控制着在特征点匹配阶段的一个阈值，用于筛选掉远距离点。
     else
         mpLocalMapper->mThFarPoints = fsSettings["thFarPoints"];
     if(mpLocalMapper->mThFarPoints!=0)
     {
         cout << "Discard points further than " << mpLocalMapper->mThFarPoints << " m from current camera" << endl;
-        mpLocalMapper->mbFarPoints = true;
+        mpLocalMapper->mbFarPoints = true; // 不考虑远处点
     }
     else
         mpLocalMapper->mbFarPoints = false;
@@ -238,7 +258,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         mpViewer->both = mpFrameDrawer->both;
     }
 
-    // Fix verbosity
+    // Fix verbosity 输出日志，日志输出级别为 Verbose::VERBOSITY_QUIET
     Verbose::SetTh(Verbose::VERBOSITY_QUIET);
 
 }
@@ -427,20 +447,20 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
     // Check mode change
     {
         unique_lock<mutex> lock(mMutexMode);
-        if(mbActivateLocalizationMode)
+        if(mbActivateLocalizationMode) // 定位模式
         {
             mpLocalMapper->RequestStop();
 
             // Wait until Local Mapping has effectively stopped
             while(!mpLocalMapper->isStopped())
             {
-                usleep(1000);
+                usleep(1000); // 序暂停执行 1000 微秒，也就是 1 毫秒
             }
 
             mpTracker->InformOnlyTracking(true);
             mbActivateLocalizationMode = false;
         }
-        if(mbDeactivateLocalizationMode)
+        if(mbDeactivateLocalizationMode) //非定位模式
         {
             mpTracker->InformOnlyTracking(false);
             mpLocalMapper->Release();
@@ -465,9 +485,10 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
         }
     }
 
+    // 带 IMU 的单目相机
     if (mSensor == System::IMU_MONOCULAR)
         for(size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
-            mpTracker->GrabImuData(vImuMeas[i_imu]);
+            mpTracker->GrabImuData(vImuMeas[i_imu]);  //  从 vImuMeas 中获取数据 push_back 到 mlQueueImuData
 
     Sophus::SE3f Tcw = mpTracker->GrabImageMonocular(imToFeed,timestamp,filename);
 

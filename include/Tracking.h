@@ -57,6 +57,7 @@ class Tracking
 {  
 
 public:
+    // 是Eigen C++库中的一个宏，用于为自定义的Eigen类型重载operator new和operator delete，可以保证返回指针是对齐的，以确保内存分配对齐。
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Atlas* pAtlas,
              KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq=std::string());
@@ -119,13 +120,13 @@ public:
 
     // Tracking states
     enum eTrackingState{
-        SYSTEM_NOT_READY=-1,
-        NO_IMAGES_YET=0,
-        NOT_INITIALIZED=1,
-        OK=2,
-        RECENTLY_LOST=3,
-        LOST=4,
-        OK_KLT=5
+        SYSTEM_NOT_READY=-1,  //  表示ORBSLAM3系统还未准备好，可能因为初始化未完成或系统未初始化等原因。在这个状态下，系统不会进行正常的跟踪操作。
+        NO_IMAGES_YET=0, //  表示系统还没有接收到任何图像帧，即相机还未产生图像数据。这通常是在系统启动阶段的初始状态。
+        NOT_INITIALIZED=1, // 表示系统已接收到图像帧，但还未完成初始化。
+        OK=2, // 表示系统正常运行，成功进行了初始化，并且在当前帧上找到了足够的特征点进行位姿跟踪。正常状态
+        RECENTLY_LOST=3, // 系统最近丢失了跟踪，即上一帧或几帧的跟踪失败。此时，系统可能在尝试重新初始化或使用其他方式来恢复跟踪。
+        LOST=4, // 表示系统完全丢失了跟踪，无法从当前帧中找到足够的特征点或匹配来进行位姿估计。
+        OK_KLT=5 // 表示系统采用了KLT（Kanade-Lucas-Tomasi）光流法进行跟踪，而不是ORB特征。KLT光流法可以在一定程度上增强对运动模糊情况下的鲁棒性。
     };
 
     eTrackingState mState;
@@ -297,7 +298,7 @@ protected:
     double mImuPer;
     bool mInsertKFsLost;
 
-    //New KeyFrame rules (according to fps)
+    // New KeyFrame rules (according to fps)
     int mMinFrames;
     int mMaxFrames;
 
@@ -357,6 +358,8 @@ protected:
 
     void newParameterLoader(Settings* settings);
 
+// #ifdef REGISTER_LOOP 是条件编译的预处理指令，用于检查是否定义了名为REGISTER_LOOP的宏
+// 如果已定义该宏，则以下代码块将包含在编译中，否则将被忽略。
 #ifdef REGISTER_LOOP
     bool Stop();
 
